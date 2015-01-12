@@ -33,7 +33,8 @@ path(Path, P) ->
 
 -spec path(kvc_key() | [kvc_key()], kvc_obj(), term()) -> term().
 path(Path, P, Default) when is_binary(Path) ->
-    path(binary:split(Path, <<".">>, [global]), P, Default);
+    Path0 = binary:replace(Path, <<"/">>, <<".">>, [global]),
+    path(binary:split(Path0, <<".">>, [global]), P, Default);
 path(Path, P, Default) when is_atom(Path) ->
     path(atom_to_binary(Path, utf8), P, Default);
 path(Path=[N | _], P, Default) when is_integer(N) ->
@@ -42,6 +43,13 @@ path([], [], Default) ->
     Default;
 path([], P, _Default) ->
     P;
+path([<<"#">> | Rest], P, Default) ->
+    path(Rest, P, Default);
+path([K | Rest], P, Default) when is_binary(K) ->
+    Key = binary:replace(K, <<"~0">>, <<"~">>, [global]),
+    Key1 = binary:replace(Key, <<"~1">>, <<"/">>, [global]),
+    Key2 = binary:replace(Key1, <<"%25">>, <<"%">>, [global]),
+    path(Rest, value(Key2, P, Default), Default);
 path([K | Rest], P, Default) ->
     path(Rest, value(K, P, Default), Default).
 

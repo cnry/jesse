@@ -36,6 +36,9 @@
                  , JsonSchema :: jesse:json_term()
                  , State      :: jesse_state:state()
                  ) -> jesse_state:state() | no_return().
+check_value(Value, [{?REF, Ref}], State) ->
+  RefSchema = unwrap(jesse_json_path:path(Ref, get_original_schema(State))),
+  check_value(Value, RefSchema, State);
 check_value(Value, [{?TYPE, Type} | Attrs], State) ->
   NewState = check_type(Value, Type, State),
   check_value(Value, Attrs, NewState);
@@ -303,6 +306,12 @@ check_union_type(Value, UnionType, State) ->
 wrong_type(Value, State) ->
   handle_data_invalid(?wrong_type, Value, State).
 
+% @private
+get_ref_from_properties({[{?REF, Ref}]}, State) ->
+  jesse_json_path:path(Ref, get_original_schema(State));
+get_ref_from_properties(Properties, _State) ->
+  Properties.
+
 %% @doc 5.2.  properties
 %%
 %% This attribute is an object with property definitions that define the
@@ -318,6 +327,8 @@ wrong_type(Value, State) ->
 check_properties(Value, Properties, State) ->
   TmpState
     = lists:foldl( fun({PropertyName, PropertySchema}, CurrentState) ->
+                       PropertySchemaResolved =
+                         get_ref_from_properties(PropertySchema, State),
                        case get_value(PropertyName, Value) of
                          ?not_found ->
 %% @doc 5.7.  required
@@ -326,7 +337,7 @@ check_properties(Value, Properties, State) ->
 %% be undefined.  This is false by default, making the instance
 %% optional.
 %% @end
-                           case get_value(?REQUIRED, PropertySchema) of
+                           case get_value(?REQUIRED, PropertySchemaResolved) of
                              true ->
                                handle_data_invalid( {?missing_required_property
                                                      , PropertyName}
@@ -337,11 +348,11 @@ check_properties(Value, Properties, State) ->
                            end;
                          Property ->
                            NewState = set_current_schema( CurrentState
-                                                        , PropertySchema
+                                                        , PropertySchemaResolved
                                                         ),
                            check_value( PropertyName
                                       , Property
-                                      , PropertySchema
+                                      , PropertySchemaResolved
                                       , NewState
                                       )
                        end
@@ -945,6 +956,10 @@ handle_schema_invalid(Info, State) ->
 %% @private
 get_current_schema(State) ->
   jesse_state:get_current_schema(State).
+
+%% @private
+get_original_schema(State) ->
+  jesse_state:get_original_schema(State).
 
 %% @private
 set_current_schema(State, NewSchema) ->

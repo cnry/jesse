@@ -190,6 +190,27 @@ schema_unsupported_test() ->
               , jesse_schema_validator:validate(UnsupportedSchema, Json, [])
               ).
 
+ref_test() ->
+  IntegerSchema = {[{<<"type">>, <<"integer">>}, {<<"required">>, true}]},
+  Schema =
+    {[{<<"type">>, <<"object">>},
+      {<<"properties">>, {
+         [{<<"field1">>, IntegerSchema},
+          {<<"field2">>, {[{<<"$ref">>, <<"properties.field1">>}]}}
+         ]}},
+      {<<"additionalProperties">>, false}
+     ]},
+  ?assertEqual(
+     {ok, {[{<<"field1">>, 42}, {<<"field2">>, 43}]}},
+     jesse_schema_validator:validate(Schema, {[{<<"field1">>, 42}, {<<"field2">>, 43}]}, [])),
+  ?assertThrow(
+     [{data_invalid, IntegerSchema, wrong_type,<<"test">>, [<<"field2">>]}],
+     jesse_schema_validator:validate(Schema, {[{<<"field1">>, 42}, {<<"field2">>, <<"test">>}]}, [])),
+  ?assertThrow(
+     [{data_invalid, IntegerSchema, {missing_required_property, <<"field2">>}, {[{<<"field1">>, 42}]}, []}],
+     jesse_schema_validator:validate(Schema, {[{<<"field1">>, 42}]}, [])),
+  ok.
+
 %%% Local Variables:
 %%% erlang-indent-level: 2
 %%% End:

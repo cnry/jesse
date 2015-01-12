@@ -46,7 +46,7 @@
 -define(DISALLOW,             <<"disallow">>).
 -define(EXTENDS,              <<"extends">>).
 -define(ID,                   <<"id">>).
--define(_REF,                 <<"$ref">>).                 % NOT IMPLEMENTED YET
+-define(REF,                  <<"$ref">>).
 
 %% Constant definitions for Json types
 -define(ANY,                  <<"any">>).
